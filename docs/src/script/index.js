@@ -50,6 +50,91 @@ async function login() {
 
 const IPFS = IpfsHttpClient("https://ipfs.glpro.io:4010");
 
+function captureFile() {
+    let name = document.getElementById("AppName").value;
+    let describe = document.getElementById("Describe").value;
+    let icon = document.getElementById("AppIcon").files;
+    let file = document.getElementById("file").files;
+    let descObj = { "describe": describe, "size": file.length > 0 ? file[0].size : 1 };
+    if (name !== "" && describe !== "" && icon.length !== 0 && file.length !== 0) {
+        saveToIpfs({
+            AppName: name,
+            Describe: descObj,
+            AppIcon: icon,
+            File: file
+        });
+        SetLoadingType(true);
+        return;
+    }
+    if (upType === "update") {
+        if (name !== upappname || describe !== updeccibeText || icon.length !== 0 || file.length !== 0) {
+            if (name !== "" && describe !== "") {
+                saveToIpfs({
+                    AppName: name,
+                    Describe: descObj,
+                    AppIcon: icon,
+                    File: file
+                });
+                SetLoadingType(true);
+            }
+        }
+    }
+};
+
+async function saveToIpfs(obj) {
+    let added3;
+    let added4;
+    let pro = document.getElementsByClassName("process")[0];
+    pro.style.display = "block";
+    try {
+        let added1 = await IPFS.add({
+            path: appNamePath,
+            content: obj.AppName
+        });
+        let added2 = await IPFS.add({
+            path: appDescribePath,
+            content: obj.Describe.describe
+        });
+        if (obj.AppIcon.length !== 0) {
+            added3 = await IPFS.add({
+                path: appIconPath,
+                content: obj.AppIcon[0]
+            });
+        }
+        if (obj.File.length !== 0) {
+            added4 = await IPFS.add({
+                path: appZipPath,
+                content: obj.File[0]
+            }, {
+                progress: (prog) => {
+                    let p = Math.floor(100 * Number(prog) / Number(obj.Describe.size));
+                    if (p > 100) p = 100;
+                    pro.textContent = p.toString() + "%";
+                }
+            });
+        }
+        let info = {};
+        info._name = obj.AppName;
+        info._desc = added2.cid.string;
+        if (added3) {
+            info._icon = added3.cid.string;
+        } else {
+            info._icon = upiconHash;
+        }
+        if (added4) {
+            info._source = added4.cid.string;
+        } else {
+            info._source = upzipHash;
+        }
+        addProject([info._name, info._desc, info._source, info._icon]);
+        init();
+        result("SUCCEED");
+    } catch (err) {
+        console.error(err);
+        result("FAIL");
+    }
+}
+
 async function getSource(hash, type) {
     let arr = [];
     let cons = IPFS.cat(hash);
@@ -190,7 +275,7 @@ async function addProject([_name, _desc, _source, _icon]) {
             if (upType === "update") {
                 await erc20.functions.updateProject(appid, _name, _desc, _source, _icon);
             } else {
-                await erc20.functions.addProject(_name, _desc, _source, _icon);                     //{ nonce: 3, gasPrice: 100 * 1e9, gasLimit: 500000 }
+                await erc20.functions.addProject(_name, _desc, _source, _icon);
             }
         }
     } catch (e) {
@@ -220,91 +305,6 @@ function changePath(value) {
             return;
         }
         document.getElementById("filePath").textContent = file.value;
-    }
-}
-
-function captureFile() {
-    let name = document.getElementById("AppName").value;
-    let describe = document.getElementById("Describe").value;
-    let icon = document.getElementById("AppIcon").files;
-    let file = document.getElementById("file").files;
-    let descObj = { "describe": describe, "size": file.length > 0 ? file[0].size : 1 };
-    if (name !== "" && describe !== "" && icon.length !== 0 && file.length !== 0) {
-        saveToIpfs({
-            AppName: name,
-            Describe: descObj,
-            AppIcon: icon,
-            File: file
-        });
-        SetLoadingType(true);
-        return;
-    }
-    if (upType === "update") {
-        if (name !== upappname || describe !== updeccibeText || icon.length !== 0 || file.length !== 0) {
-            if (name !== "" && describe !== "") {
-                saveToIpfs({
-                    AppName: name,
-                    Describe: descObj,
-                    AppIcon: icon,
-                    File: file
-                });
-                SetLoadingType(true);
-            }
-        }
-    }
-};
-
-async function saveToIpfs(obj) {
-    let added3;
-    let added4;
-    let pro = document.getElementsByClassName("process")[0];
-    pro.style.display = "block";
-    try {
-        let added1 = await IPFS.add({
-            path: appNamePath,
-            content: obj.AppName
-        });
-        let added2 = await IPFS.add({
-            path: appDescribePath,
-            content: obj.Describe.describe
-        });
-        if (obj.AppIcon.length !== 0) {
-            added3 = await IPFS.add({
-                path: appIconPath,
-                content: obj.AppIcon[0]
-            });
-        }
-        if (obj.File.length !== 0) {
-            added4 = await IPFS.add({
-                path: appZipPath,
-                content: obj.File[0]
-            }, {
-                progress: (prog) => {
-                    let p = Math.floor(100 * Number(prog) / Number(obj.Describe.size));
-                    if (p > 100) p = 100;
-                    pro.textContent = p.toString() + "%";
-                }
-            });
-        }
-        let info = {};
-        info._name = obj.AppName;
-        info._desc = added2.cid.string;
-        if (added3) {
-            info._icon = added3.cid.string;
-        } else {
-            info._icon = upiconHash;
-        }
-        if (added4) {
-            info._source = added4.cid.string;
-        } else {
-            info._source = upzipHash;
-        }
-        addProject([info._name, info._desc, info._source, info._icon]);
-        init();
-        result("SUCCEED");
-    } catch (err) {
-        console.error(err);
-        result("FAIL");
     }
 }
 
